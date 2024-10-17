@@ -1,10 +1,9 @@
 require("dotenv").config();
-const express = require('express'); //import express
+const express = require("express"); //import express
 require("express-async-errors");
-const router = require("./routes")
-const fileUpload = require("express-fileupload")
+const router = require("./routes");
+const fileUpload = require("express-fileupload");
 const { errorHandler, notFoundURLHandler } = require("./middlewares/errors");
-
 
 const app = express(); //create express app
 const port = 3000; //set port
@@ -14,13 +13,13 @@ app.use(express.json());
 
 //we need to read form-body (body parser/reader) (req.files) if you want upload file
 app.use(
-    fileUpload({
-        limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
-    })
+  fileUpload({
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
+  })
 );
 
 //create route for students page
-app.use('/',router);
+app.use("/", router);
 
 // This function is for 404 handle URL
 app.use("*", notFoundURLHandler);
@@ -30,5 +29,5 @@ app.use(errorHandler);
 
 // Run the express server
 app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+  console.log(`Server is running on port ${port}`);
 });

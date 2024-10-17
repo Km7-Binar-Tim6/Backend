@@ -4,7 +4,7 @@ import React from "react";
 const controllers = () => {
   return (
     <View>
-      <Text>controllers</Text>
+      <Text>controllerss</Text>
     </View>
   );
 };

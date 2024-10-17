@@ -6,7 +6,7 @@ const {
 
 const {
     getAllCars
-} = require('../controllers/carsController');
+} = require('../controllers/carsControllers');
 
 const router = express.Router();
 

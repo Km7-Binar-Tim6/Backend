@@ -1,4 +1,4 @@
-const serviceCars = require('../services/serCars');
+const serviceCars = require('../services/carsServices');
 const { SuccessResponse } = require('../utils/response');
 const { NotFoundError } = require('../utils/request');
 

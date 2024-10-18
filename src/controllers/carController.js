@@ -2,11 +2,12 @@
 const { z } = require("zod");
 const carService = require("../services/carService");
 const { PrismaClient } = require("@prisma/client");
-const imageKit = require("../utils/imageKit"); // Ensure imageKit is imported
+const imageKit = require("../utils/imageKit");
 
 // Initialize Prisma Client
 const prisma = new PrismaClient();
 
+// Define the car schema using Zod for validation
 const carSchema = z.object({
   plate: z.string(),
   image: z.string().optional(),
@@ -14,12 +15,12 @@ const carSchema = z.object({
     .number()
     .int()
     .positive()
-    .or(z.string().transform((val) => parseInt(val))), // Allow string input for rentPerDay
+    .or(z.string().transform((val) => parseInt(val))),
   capacity: z
     .number()
     .int()
     .positive()
-    .or(z.string().transform((val) => parseInt(val))), // Allow string input for capacity
+    .or(z.string().transform((val) => parseInt(val))),
   description: z.string(),
   availableat: z.string(), // Use availableat
   available: z.boolean().or(z.string().transform((val) => val === "true")), // Allow string input for available
@@ -28,7 +29,7 @@ const carSchema = z.object({
     .int()
     .min(1886)
     .max(new Date().getFullYear())
-    .or(z.string().transform((val) => parseInt(val))), // Allow string input for year
+    .or(z.string().transform((val) => parseInt(val))),
   transmission: z.string(),
   type: z.string(),
   manufacture: z.string(),
@@ -37,84 +38,58 @@ const carSchema = z.object({
   specs: z.string().optional(), // Will handle later
 });
 
-// Helper function to get or create transmission ID
-const getTransmissionId = async (transmissionName) => {
-  let transmission = await prisma.transmission.findFirst({
-    where: {
-      transmission_option: transmissionName,
-    },
-  });
-
-  if (!transmission) {
-    transmission = await prisma.transmission.create({
-      data: {
-        transmission_option: transmissionName,
-      },
-    });
-    console.log(`Transmission option "${transmissionName}" added to database`);
+// Helper function to get or create an ID
+const getOrCreateId = async (model, uniqueField, name) => {
+  let record = await model.findFirst({ where: { [uniqueField]: name } });
+  if (!record) {
+    record = await model.create({ data: { [uniqueField]: name } });
+    console.log(`${uniqueField} "${name}" added to database`);
   }
-
-  return transmission.id;
+  return record.id;
 };
+
+// Helper function to get or create transmission ID
+const getTransmissionId = async (transmissionName) =>
+  getOrCreateId(prisma.transmission, "transmission_option", transmissionName);
 
 // Helper function to get or create type ID
-const getTypeId = async (typeName) => {
-  let type = await prisma.type.findFirst({
-    where: {
-      type_option: typeName,
-    },
-  });
-
-  if (!type) {
-    type = await prisma.type.create({
-      data: {
-        type_option: typeName,
-      },
-    });
-    console.log(`Type option "${typeName}" added to database`);
-  }
-
-  return type.id;
-};
+const getTypeId = async (typeName) =>
+  getOrCreateId(prisma.type, "type_option", typeName);
 
 // Helper function to get or create manufacture ID
-const getManufactureId = async (manufactureName) => {
-  let manufacture = await prisma.manufacture.findFirst({
-    where: {
-      manufacture_name: manufactureName,
-    },
-  });
-
-  if (!manufacture) {
-    manufacture = await prisma.manufacture.create({
-      data: {
-        manufacture_name: manufactureName,
-      },
-    });
-    console.log(`Manufacture "${manufactureName}" added to database`);
-  }
-
-  return manufacture.id;
-};
+const getManufactureId = async (manufactureName) =>
+  getOrCreateId(prisma.manufacture, "manufacture_name", manufactureName);
 
 // Helper function to get or create model ID
-const getModelId = async (modelName) => {
-  let model = await prisma.model.findFirst({
-    where: {
-      model_name: modelName,
-    },
-  });
+const getModelId = async (modelName) =>
+  getOrCreateId(prisma.model, "model_name", modelName);
 
-  if (!model) {
-    model = await prisma.model.create({
-      data: {
-        model_name: modelName,
-      },
-    });
-    console.log(`Model "${modelName}" added to database`);
+// Helper function to get or create option ID
+const getOptionId = async (optionName) =>
+  getOrCreateId(prisma.caroptions, "option_name", optionName);
+
+// Helper function to get or create spec ID
+const getSpecId = async (specName) =>
+  getOrCreateId(prisma.carspecs, "spec_name", specName);
+
+// Convert BigInt to number (to handle any large IDs)
+const convertBigIntToNumber = (data) => {
+  if (Array.isArray(data)) {
+    return data.map((item) => convertBigIntToNumber(item));
   }
-
-  return model.id;
+  if (data && typeof data === "object") {
+    const convertedObject = {};
+    for (const key in data) {
+      convertedObject[key] =
+        typeof data[key] === "bigint"
+          ? Number(data[key])
+          : key === "availableat"
+          ? data[key]?.toISOString()
+          : convertBigIntToNumber(data[key]);
+    }
+    return convertedObject;
+  }
+  return data; // Return as is if not an object or array
 };
 
 const createCar = async (req, res) => {
@@ -138,13 +113,14 @@ const createCar = async (req, res) => {
       imageUrl = result.url;
     }
 
+    // Create the new car
     const newCar = await prisma.cars.create({
       data: {
         plate: parsedData.plate,
         rentperday: parsedData.rentperday,
         capacity: parsedData.capacity,
         description: parsedData.description,
-        availableat: availableAt, // Store as availableat
+        availableat: availableAt,
         available: parsedData.available,
         year: parsedData.year,
         transmission_id: await getTransmissionId(parsedData.transmission),
@@ -153,25 +129,64 @@ const createCar = async (req, res) => {
         model_id: await getModelId(parsedData.model),
         image: imageUrl,
       },
-      select: {
-        id: true,
-        plate: true,
-        rentperday: true,
-        capacity: true,
-        description: true,
-        availableat: true, // Ensure it's selected
-        available: true,
-        year: true,
-        transmission_id: true,
-        type_id: true,
-        manufacture_id: true,
-        model_id: true,
-        image: true,
+    });
+
+    // Process options
+    if (parsedData.options) {
+      const optionsArray = parsedData.options
+        .split(",")
+        .map((option) => option.trim());
+      for (const option of optionsArray) {
+        const optionId = await getOptionId(option);
+        // Check if the option is already linked to the car
+        const existingOption = await prisma.options.findFirst({
+          where: { car_id: newCar.id, option_id: optionId },
+        });
+        if (!existingOption) {
+          await prisma.options.create({
+            data: {
+              option_id: optionId,
+              car_id: newCar.id, // Directly referencing the new car's ID
+            },
+          });
+        }
+      }
+    }
+
+    // Process specs
+    if (parsedData.specs) {
+      const specsArray = parsedData.specs.split(",").map((spec) => spec.trim());
+      for (const spec of specsArray) {
+        const specId = await getSpecId(spec);
+        // Check if the spec is already linked to the car
+        const existingSpec = await prisma.specs.findFirst({
+          where: { car_id: newCar.id, spec_id: specId },
+        });
+        if (!existingSpec) {
+          await prisma.specs.create({
+            data: {
+              spec_id: specId,
+              car_id: newCar.id, // Directly referencing the new car's ID
+            },
+          });
+        }
+      }
+    }
+
+    // Fetch the newly created car with related data
+    const createdCarWithRelations = await prisma.cars.findUnique({
+      where: { id: newCar.id },
+      include: {
+        transmission: true,
+        type: true,
+        manufacture: true,
+        model: true,
+        options: true,
+        specs: true,
       },
     });
 
-    // Convert any BigInt values in newCar to Number
-    const convertedCar = convertBigIntToNumber(newCar);
+    const convertedCar = convertBigIntToNumber(createdCarWithRelations);
 
     res.status(201).json({
       message: "Car created successfully!",
@@ -186,38 +201,11 @@ const createCar = async (req, res) => {
   }
 };
 
-// Convert BigInt to number (to handle any large IDs)
-const convertBigIntToNumber = (data) => {
-  if (Array.isArray(data)) {
-    return data.map((item) => convertBigIntToNumber(item));
-  }
-
-  if (data && typeof data === "object") {
-    const convertedObject = {};
-    for (const key in data) {
-      if (typeof data[key] === "bigint") {
-        convertedObject[key] = Number(data[key]); // Convert BigInt to Number
-      } else if (key === "availableat") {
-        convertedObject[key] = data[key] ? data[key].toISOString() : null; // Convert Date to ISO String
-      } else if (Array.isArray(data[key])) {
-        convertedObject[key] = convertBigIntToNumber(data[key]);
-      } else if (data[key] && typeof data[key] === "object") {
-        convertedObject[key] = convertBigIntToNumber(data[key]);
-      } else {
-        convertedObject[key] = data[key]; // Keep original value
-      }
-    }
-    return convertedObject;
-  }
-
-  return data; // Return as is if not an object or array
-};
-
 const getAllCars = async (req, res) => {
   try {
     const cars = await carService.getAllCars();
-    console.log("Retrieved Cars:", cars); // Log the raw data
-    const convertedCars = convertBigIntToNumber(cars); // Convert BigInt to Number
+    console.log("Retrieved Cars:", cars);
+    const convertedCars = convertBigIntToNumber(cars);
     res.json(convertedCars);
   } catch (error) {
     console.error("Error retrieving cars:", error);
@@ -229,7 +217,7 @@ const getCarById = async (req, res) => {
   try {
     const car = await carService.getCarById(Number(req.params.id));
     if (car) {
-      const convertedCar = convertBigIntToNumber(car); // Convert BigInt to Number
+      const convertedCar = convertBigIntToNumber(car);
       res.json(convertedCar);
     } else {
       res.status(404).json({ message: "Car not found" });
@@ -242,12 +230,10 @@ const getCarById = async (req, res) => {
 
 const updateCar = async (req, res) => {
   try {
-    // Log form-data
-    console.log("Received data from request body:", req.body); // Log the text fields
-    console.log("Received file:", req.file); // Log the uploaded file, if any
+    console.log("Received data from request body:", req.body);
+    console.log("Received file:", req.file);
 
-    const carId = Number(req.params.id); // Ensure the ID is a number
-
+    const carId = Number(req.params.id);
     const parsedData = req.body; // Get the form-data
     const updatedCarData = {};
 
@@ -268,13 +254,13 @@ const updateCar = async (req, res) => {
     // If a new file is uploaded, handle the file upload
     if (req.file) {
       const result = await imageKit.upload({
-        file: req.file.buffer, // Buffer from multer
-        fileName: req.file.originalname, // Original file name
+        file: req.file.buffer,
+        fileName: req.file.originalname,
       });
-      updatedCarData.image = result.url; // Set the image URL
+      updatedCarData.image = result.url;
     }
 
-    console.log("Updating car with data:", updatedCarData); // Log the update data
+    console.log("Updating car with data:", updatedCarData);
 
     // Update the car in the database
     const updatedCar = await prisma.cars.update({
@@ -282,11 +268,85 @@ const updateCar = async (req, res) => {
       data: updatedCarData,
     });
 
-    // Convert any BigInt values in updatedCar to Number
-    const convertedCar = convertBigIntToNumber(updatedCar);
+    // Handle manufacture, type, transmission, and model
+    if (parsedData.manufacture) {
+      const manufactureId = await getManufactureId(parsedData.manufacture);
+      updatedCarData.manufacture_id = manufactureId; // Set ID for the update
+    }
 
-    // Return the converted car data
-    res.json(convertedCar);
+    if (parsedData.type) {
+      const typeId = await getTypeId(parsedData.type);
+      updatedCarData.type_id = typeId; // Set ID for the update
+    }
+
+    if (parsedData.transmission) {
+      const transmissionId = await getTransmissionId(parsedData.transmission);
+      updatedCarData.transmission_id = transmissionId; // Set ID for the update
+    }
+
+    if (parsedData.model) {
+      const modelId = await getModelId(parsedData.model);
+      updatedCarData.model_id = modelId; // Set ID for the update
+    }
+
+    // Update the car record again with the new IDs if they exist
+    await prisma.cars.update({
+      where: { id: carId },
+      data: updatedCarData,
+    });
+
+    // Handle options
+    if (parsedData.options) {
+      const optionsArray = parsedData.options
+        .split(",")
+        .map((option) => option.trim());
+
+      // Clear existing options
+      await prisma.options.deleteMany({ where: { car_id: carId } });
+
+      await Promise.all(
+        optionsArray.map(async (option) => {
+          const optionId = await getOptionId(option);
+          await prisma.options.create({
+            data: { option_id: optionId, car_id: carId },
+          });
+        })
+      );
+    }
+
+    // Handle specs
+    if (parsedData.specs) {
+      const specsArray = parsedData.specs.split(",").map((spec) => spec.trim());
+
+      // Clear existing specs
+      await prisma.specs.deleteMany({ where: { car_id: carId } });
+
+      await Promise.all(
+        specsArray.map(async (spec) => {
+          const specId = await getSpecId(spec);
+          await prisma.specs.create({
+            data: { spec_id: specId, car_id: carId },
+          });
+        })
+      );
+    }
+
+    // Fetch the updated car with related data
+    const updatedCarWithRelations = await prisma.cars.findUnique({
+      where: { id: carId },
+      include: {
+        transmission: true,
+        type: true,
+        manufacture: true,
+        model: true,
+        options: true,
+        specs: true,
+      },
+    });
+
+    const convertedCar = convertBigIntToNumber(updatedCarWithRelations);
+
+    res.json({ message: "Car updated successfully!", data: convertedCar });
   } catch (error) {
     console.error("Error updating car:", error);
     res.status(500).json({ error: "Failed to update car" });
@@ -294,11 +354,16 @@ const updateCar = async (req, res) => {
 };
 
 const deleteCar = async (req, res) => {
-  await carService.deleteCar(Number(req.params.id));
-  res.status(204).send();
+  try {
+    const carId = Number(req.params.id);
+    await prisma.cars.delete({ where: { id: carId } });
+    res.json({ message: "Car deleted successfully!" });
+  } catch (error) {
+    console.error("Error deleting car:", error);
+    res.status(500).json({ error: "Failed to delete car" });
+  }
 };
 
-// Export functions for use in routes
 module.exports = {
   createCar,
   getAllCars,

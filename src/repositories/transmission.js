@@ -4,19 +4,17 @@ const JSONBigInt = require('json-bigint');
 const prisma = new PrismaClient();
 
 exports.getTransmissions = async transmission_option => {
+	console.log('Received transmission_option:', transmission_option); // Tambahkan log ini
 	// Define query here
 	let query = {};
+
 	// It will generate the query
-	let orQuery = [];
 	if (transmission_option) {
-		orQuery.push({
-			transmission_option: { contains: transmission_option, mode: 'insensitive' },
-		});
-	}
-	if (orQuery.length > 0) {
 		query.where = {
-			...query.where,
-			OR: orQuery,
+			transmission_option: {
+				contains: transmission_option, // Memfilter berdasarkan transmission_option
+				mode: 'insensitive', // Pencarian tidak sensitif terhadap huruf besar/kecil
+			},
 		};
 	}
 
@@ -34,10 +32,7 @@ exports.getTransmissionById = async id => {
 		where: {
 			id: id,
 		},
-		// Hanya sertakan relasi jika ada
-		include: {
-			cars: true, // Misalnya, jika ada relasi dengan model cars
-		},
+		// Hapus include cars
 	});
 
 	// Convert BigInt fields to string for safe serialization
@@ -48,10 +43,7 @@ exports.getTransmissionById = async id => {
 exports.createTransmission = async data => {
 	const newTransmission = await prisma.transmission.create({
 		data,
-		// Sertakan relasi jika ada
-		include: {
-			cars: true, // Misalnya, jika ada relasi dengan model cars
-		},
+		// Hapus include cars
 	});
 
 	// Convert BigInt fields to string for safe serialization
@@ -64,16 +56,9 @@ exports.updateTransmission = async (id, data) => {
 		where: { id },
 		data: {
 			transmission_option: data.transmission_option, // Pastikan ini sesuai dengan data yang ingin diperbarui
-			// Jika Anda ingin memperbarui relasi cars, gunakan struktur yang benar
-			cars: {
-				// Misalnya, jika Anda ingin menghapus semua relasi dan menambah yang baru
-				deleteMany: {}, // Menghapus semua relasi yang ada (hati-hati dengan ini)
-				create: data.cars || [], // Menambahkan relasi baru jika ada
-			},
+			// Hapus bagian cars
 		},
-		include: {
-			cars: true, // Sertakan relasi cars jika diperlukan
-		},
+		// Hapus include cars
 	});
 
 	// Convert BigInt fields to string for safe serialization
@@ -84,10 +69,7 @@ exports.updateTransmission = async (id, data) => {
 exports.deleteTransmissionById = async id => {
 	const deletedTransmission = await prisma.transmission.delete({
 		where: { id },
-		// Sertakan relasi jika ada
-		include: {
-			cars: true, // Misalnya, jika ada relasi dengan model cars
-		},
+		// Hapus include cars
 	});
 
 	// Convert BigInt fields to string for safe serialization

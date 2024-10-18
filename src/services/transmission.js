@@ -1,8 +1,8 @@
 const transmissionRepository = require('../repositories/transmission');
 const { NotFoundError, InternalServerError } = require('../utils/request');
 
-exports.getTransmissions = async () => {
-	return transmissionRepository.getTransmissions();
+exports.getTransmissions = async transmission_option => {
+	return transmissionRepository.getTransmissions(transmission_option);
 };
 
 exports.getTransmissionById = async id => {
@@ -25,25 +25,12 @@ exports.createTransmission = async data => {
 };
 
 exports.updateTransmission = async (id, data) => {
-	// Cek apakah transmisi ada
 	const existingTransmission = await transmissionRepository.getTransmissionById(id);
 	if (!existingTransmission) {
 		throw new NotFoundError('Transmission is Not Found!');
 	}
 
-	// Menggabungkan data yang ada dengan data baru
-	data = {
-		...existingTransmission, // existing Transmission
-		...data,
-	};
-
-	// Update transmisi
-	const updatedTransmission = await transmissionRepository.updateTransmission(id, data);
-	if (!updatedTransmission) {
-		throw new InternalServerError(['Failed to update transmission!']);
-	}
-
-	return updatedTransmission;
+	return transmissionRepository.updateTransmission(id, data);
 };
 
 exports.deleteTransmissionById = async id => {
@@ -53,11 +40,5 @@ exports.deleteTransmissionById = async id => {
 		throw new NotFoundError('Transmission is Not Found!');
 	}
 
-	// Hapus transmisi
-	const deletedTransmission = await transmissionRepository.deleteTransmissionById(id);
-	if (!deletedTransmission) {
-		throw new InternalServerError(['Failed to delete transmission!']);
-	}
-
-	return deletedTransmission;
+	return transmissionRepository.deleteTransmissionById(id);
 };

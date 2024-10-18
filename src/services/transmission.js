@@ -1,13 +1,63 @@
-const transmission = require('../repositories/transmission');
-const { BadRequestError } = require('../utils/request');
+const transmissionRepository = require('../repositories/transmission');
+const { NotFoundError, InternalServerError } = require('../utils/request');
 
 exports.getTransmissions = async () => {
-    return await transmission.getAll();
+	return transmissionRepository.getTransmissions();
 };
 
-exports.createTransmission = async (transmissionData) => {
-    if (!transmissionData.transmission_option) {
-        throw new BadRequestError('Transmission option is required');
-    }
-    return await transmission.create(transmissionData);
+exports.getTransmissionById = async id => {
+	const transmission = await transmissionRepository.getTransmissionById(id);
+	if (!transmission) {
+		throw new NotFoundError('Transmission is Not Found!');
+	}
+
+	return transmission;
+};
+
+exports.createTransmission = async data => {
+	// Validasi data jika diperlukan
+	if (!data.transmission_option) {
+		throw new InternalServerError(['Transmission option is required!']);
+	}
+
+	// Create the data
+	return transmissionRepository.createTransmission(data);
+};
+
+exports.updateTransmission = async (id, data) => {
+	// Cek apakah transmisi ada
+	const existingTransmission = await transmissionRepository.getTransmissionById(id);
+	if (!existingTransmission) {
+		throw new NotFoundError('Transmission is Not Found!');
+	}
+
+	// Menggabungkan data yang ada dengan data baru
+	data = {
+		...existingTransmission, // existing Transmission
+		...data,
+	};
+
+	// Update transmisi
+	const updatedTransmission = await transmissionRepository.updateTransmission(id, data);
+	if (!updatedTransmission) {
+		throw new InternalServerError(['Failed to update transmission!']);
+	}
+
+	return updatedTransmission;
+};
+
+exports.deleteTransmissionById = async id => {
+	// Cek apakah transmisi ada
+	const existingTransmission = await transmissionRepository.getTransmissionById(id);
+	if (!existingTransmission) {
+		throw new NotFoundError('Transmission is Not Found!');
+	}
+
+	// Hapus transmisi
+	const deletedTransmission = await transmissionRepository.deleteTransmissionById(id);
+	if (!deletedTransmission) {
+		throw new InternalServerError(['Failed to delete transmission!']);
+	}
+
+	return deletedTransmission;
 };

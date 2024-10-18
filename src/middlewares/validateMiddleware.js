@@ -1,3 +1,4 @@
+//src/middlewares/carsMiddlewares
 const { z } = require("zod");
 const { badrequestError } = require("../utils/request");
 
@@ -10,7 +11,7 @@ exports.validateGetCars = (req, res, next) => {
     availableAt: z.string().optional(),
     available: z.boolean().optional(),
     year: z.number().optional(),
-    image: z.string(),
+    image: z.string().optional(),
   });
 
   const resultValidateQuery = validateQuery.safeParse(req.query);

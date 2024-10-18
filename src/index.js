@@ -1,33 +1,18 @@
-require("dotenv").config();
-const express = require("express"); //import express
-require("express-async-errors");
-const router = require("./routes");
-const fileUpload = require("express-fileupload");
-const { errorHandler, notFoundURLHandler } = require("./middlewares/errors");
+const express = require("express");
+const carRoutes = require("./routes/carRoutes");
+const multer = require("multer");
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-const app = express(); //create express app
-const port = 3000; //set port
-
-// Add middleware to parse JSON request bodies
+// Middleware for parsing JSON and form-data
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-//we need to read form-body (body parser/reader) (req.files) if you want upload file
-app.use(
-  fileUpload({
-    limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
-  })
-);
+// Multer configuration for file uploads
+const upload = multer({ storage: multer.memoryStorage() }); // Store files in memory
 
-//create route for students page
-app.use("/", router);
+app.use("/api/cars", upload.single("image"), carRoutes);
 
-// This function is for 404 handle URL
-app.use("*", notFoundURLHandler);
-
-// This function is to handle error when API hit, it always be the last middleware
-app.use(errorHandler);
-
-// Run the express server
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });

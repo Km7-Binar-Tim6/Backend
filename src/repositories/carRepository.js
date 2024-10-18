@@ -1,97 +1,48 @@
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+const prisma = require("../database");
 
-const createCar = async (carData) => {
-  const car = await prisma.cars.create({
-    data: {
-      plate: carData.plate,
-      rentPerDay: carData.rentPerDay,
-      capacity: carData.capacity,
-      description: carData.description,
-      availableAt: carData.availableAt,
-      available: carData.available,
-      year: carData.year,
-      image: carData.image,
-      transmission: { connect: { transmission_option: carData.transmission } },
-      type: { connect: { type_option: carData.type } },
-      manufacture: { connect: { manufacture_name: carData.manufacture } },
-      model: { connect: { model_name: carData.model } },
-    },
-  });
+const carRepository = {
+  create: (data) => prisma.cars.create({ data }),
+  findAll: () => prisma.cars.findMany(),
+  findById: (id) => prisma.cars.findUnique({ where: { id } }),
+  update: (id, data) => prisma.cars.update({ where: { id }, data }),
+  delete: (id) => prisma.cars.delete({ where: { id } }),
+  createOrUpdateOptions: async (carId, options) => {
+    const optionIds = await Promise.all(
+      options.map(async (option) => {
+        const existingOption = await prisma.carOptions.upsert({
+          where: { option_name: option },
+          update: {},
+          create: { option_name: option },
+        });
+        return existingOption.id;
+      })
+    );
 
-  // Handle options and specs associations
-  if (carData.options.length > 0) {
-    for (let option of carData.options) {
-      await prisma.options.create({
-        data: {
-          option_id: await prisma.carOptions.findUnique({
-            where: { option_name: option },
-          }).id,
-          car_id: car.id,
-        },
-      });
-    }
-  }
+    // Link options to the car
+    await prisma.options.createMany({
+      data: optionIds.map((optionId) => ({
+        option_id: optionId,
+        car_id: carId,
+      })),
+    });
+  },
+  createOrUpdateSpecs: async (carId, specs) => {
+    const specIds = await Promise.all(
+      specs.map(async (spec) => {
+        const existingSpec = await prisma.carSpecs.upsert({
+          where: { spec_name: spec },
+          update: {},
+          create: { spec_name: spec },
+        });
+        return existingSpec.id;
+      })
+    );
 
-  if (carData.specs.length > 0) {
-    for (let spec of carData.specs) {
-      await prisma.specs.create({
-        data: {
-          spec_id: await prisma.carSpecs.findUnique({
-            where: { spec_name: spec },
-          }).id,
-          car_id: car.id,
-        },
-      });
-    }
-  }
-
-  return car;
+    // Link specs to the car
+    await prisma.specs.createMany({
+      data: specIds.map((specId) => ({ spec_id: specId, car_id: carId })),
+    });
+  },
 };
 
-const getCars = async () => {
-  return await prisma.cars.findMany({
-    include: {
-      transmission: true,
-      type: true,
-      manufacture: true,
-      model: true,
-    },
-  });
-};
-
-const getCarById = async (id) => {
-  return await prisma.cars.findUnique({
-    where: { id: parseInt(id) },
-    include: {
-      transmission: true,
-      type: true,
-      manufacture: true,
-      model: true,
-    },
-  });
-};
-
-const updateCar = async (id, carData) => {
-  return await prisma.cars.update({
-    where: { id: parseInt(id) },
-    data: {
-      ...carData,
-      image: carData.image ? carData.image : undefined, // Only update if new image is provided
-    },
-  });
-};
-
-const deleteCar = async (id) => {
-  await prisma.cars.delete({
-    where: { id: parseInt(id) },
-  });
-};
-
-module.exports = {
-  createCar,
-  getCars,
-  getCarById,
-  updateCar,
-  deleteCar,
-};
+module.exports = carRepository;

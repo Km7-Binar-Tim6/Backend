@@ -1,4 +1,7 @@
 const ImageKit = require("imagekit");
+const dotenv = require("dotenv");
+
+dotenv.config();
 
 const imageKit = new ImageKit({
   publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
@@ -6,14 +9,4 @@ const imageKit = new ImageKit({
   urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
 });
 
-const uploadImage = async (imageFile) => {
-  const result = await imageKit.upload({
-    file: imageFile.buffer, // Use buffer for memory storage
-    fileName: imageFile.originalname,
-  });
-  return result.url; // Return the URL of the uploaded image
-};
-
-module.exports = {
-  uploadImage,
-};
+module.exports = imageKit;

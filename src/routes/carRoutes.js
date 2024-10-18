@@ -1,18 +1,19 @@
 const express = require("express");
 const {
   createCar,
-  getCars,
+  getAllCars,
   getCarById,
   updateCar,
   deleteCar,
 } = require("../controllers/carController");
-const { validateCar } = require("../middlewares/validateMiddleware");
+const upload = require("../middlewares/upload");
+
 const router = express.Router();
 
-router.post("/", validateCar, createCar);
-router.get("/", getCars);
+router.post("/", upload.single("image"), createCar); // Use upload middleware for image
+router.get("/", getAllCars);
 router.get("/:id", getCarById);
-router.put("/:id", validateCar, updateCar);
+router.put("/:id", updateCar);
 router.delete("/:id", deleteCar);
 
 module.exports = router;

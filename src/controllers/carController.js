@@ -1,6 +1,8 @@
+// src/controllers/carController.js
 const { z } = require("zod");
 const carService = require("../services/carService");
 const { PrismaClient } = require("@prisma/client");
+const imageKit = require("../utils/imageKit"); // Ensure imageKit is imported
 
 // Initialize Prisma Client
 const prisma = new PrismaClient();
@@ -19,7 +21,7 @@ const carSchema = z.object({
     .positive()
     .or(z.string().transform((val) => parseInt(val))), // Allow string input for capacity
   description: z.string(),
-  availableat: z.string(),
+  availableat: z.string(), // Use availableat
   available: z.boolean().or(z.string().transform((val) => val === "true")), // Allow string input for available
   year: z
     .number()
@@ -35,18 +37,14 @@ const carSchema = z.object({
   specs: z.string().optional(), // Will handle later
 });
 
-// Helper functions to get IDs based on names from related tables
-// Helper function to get or create transmission ID
 // Helper function to get or create transmission ID
 const getTransmissionId = async (transmissionName) => {
-  // Check if transmission already exists
   let transmission = await prisma.transmission.findFirst({
     where: {
-      transmission_option: transmissionName, // Use findFirst() for non-unique fields
+      transmission_option: transmissionName,
     },
   });
 
-  // If not found, create a new transmission record
   if (!transmission) {
     transmission = await prisma.transmission.create({
       data: {
@@ -56,22 +54,17 @@ const getTransmissionId = async (transmissionName) => {
     console.log(`Transmission option "${transmissionName}" added to database`);
   }
 
-  // Return the transmission ID
   return transmission.id;
 };
 
 // Helper function to get or create type ID
-// Helper function to get or create type ID
 const getTypeId = async (typeName) => {
-  // Check if type already exists
   let type = await prisma.type.findFirst({
-    // Change to findFirst
     where: {
-      type_option: typeName, // Use the correct name for the field
+      type_option: typeName,
     },
   });
 
-  // If not found, create a new type record
   if (!type) {
     type = await prisma.type.create({
       data: {
@@ -81,21 +74,17 @@ const getTypeId = async (typeName) => {
     console.log(`Type option "${typeName}" added to database`);
   }
 
-  // Return the type ID
   return type.id;
 };
 
 // Helper function to get or create manufacture ID
 const getManufactureId = async (manufactureName) => {
-  // Check if manufacture already exists
   let manufacture = await prisma.manufacture.findFirst({
-    // Change to findFirst
     where: {
-      manufacture_name: manufactureName, // Use the correct name for the field
+      manufacture_name: manufactureName,
     },
   });
 
-  // If not found, create a new manufacture record
   if (!manufacture) {
     manufacture = await prisma.manufacture.create({
       data: {
@@ -105,21 +94,17 @@ const getManufactureId = async (manufactureName) => {
     console.log(`Manufacture "${manufactureName}" added to database`);
   }
 
-  // Return the manufacture ID
   return manufacture.id;
 };
 
 // Helper function to get or create model ID
 const getModelId = async (modelName) => {
-  // Check if model already exists
   let model = await prisma.model.findFirst({
-    // Change to findFirst
     where: {
-      model_name: modelName, // Use the correct name for the field
+      model_name: modelName,
     },
   });
 
-  // If not found, create a new model record
   if (!model) {
     model = await prisma.model.create({
       data: {
@@ -129,18 +114,28 @@ const getModelId = async (modelName) => {
     console.log(`Model "${modelName}" added to database`);
   }
 
-  // Return the model ID
   return model.id;
 };
 
 const createCar = async (req, res) => {
   try {
     const parsedData = carSchema.parse(req.body);
+    console.log("Parsed Data:", parsedData); // Log parsed data
 
     const availableAt = new Date(parsedData.availableat);
-
     if (isNaN(availableAt)) {
-      throw new Error("Invalid date format for availableAt");
+      throw new Error("Invalid date format for availableat");
+    }
+
+    let imageUrl = null;
+
+    // Check if there's an uploaded file
+    if (req.file) {
+      const result = await imageKit.upload({
+        file: req.file.buffer,
+        fileName: req.file.originalname,
+      });
+      imageUrl = result.url;
     }
 
     const newCar = await prisma.cars.create({
@@ -149,13 +144,14 @@ const createCar = async (req, res) => {
         rentperday: parsedData.rentperday,
         capacity: parsedData.capacity,
         description: parsedData.description,
-        availableat: availableAt,
+        availableat: availableAt, // Store as availableat
         available: parsedData.available,
         year: parsedData.year,
         transmission_id: await getTransmissionId(parsedData.transmission),
         type_id: await getTypeId(parsedData.type),
         manufacture_id: await getManufactureId(parsedData.manufacture),
         model_id: await getModelId(parsedData.model),
+        image: imageUrl,
       },
       select: {
         id: true,
@@ -163,13 +159,14 @@ const createCar = async (req, res) => {
         rentperday: true,
         capacity: true,
         description: true,
-        availableat: true,
+        availableat: true, // Ensure it's selected
         available: true,
         year: true,
         transmission_id: true,
         type_id: true,
         manufacture_id: true,
         model_id: true,
+        image: true,
       },
     });
 
@@ -200,7 +197,7 @@ const convertBigIntToNumber = (data) => {
     for (const key in data) {
       if (typeof data[key] === "bigint") {
         convertedObject[key] = Number(data[key]); // Convert BigInt to Number
-      } else if (key === "availableAt") {
+      } else if (key === "availableat") {
         convertedObject[key] = data[key] ? data[key].toISOString() : null; // Convert Date to ISO String
       } else if (Array.isArray(data[key])) {
         convertedObject[key] = convertBigIntToNumber(data[key]);
@@ -217,18 +214,29 @@ const convertBigIntToNumber = (data) => {
 };
 
 const getAllCars = async (req, res) => {
-  const cars = await carService.getAllCars();
-  const convertedCars = convertBigIntToNumber(cars); // Convert BigInt to Number
-  res.json(convertedCars);
+  try {
+    const cars = await carService.getAllCars();
+    console.log("Retrieved Cars:", cars); // Log the raw data
+    const convertedCars = convertBigIntToNumber(cars); // Convert BigInt to Number
+    res.json(convertedCars);
+  } catch (error) {
+    console.error("Error retrieving cars:", error);
+    res.status(500).json({ error: "Failed to retrieve cars" });
+  }
 };
 
 const getCarById = async (req, res) => {
-  const car = await carService.getCarById(Number(req.params.id));
-  if (car) {
-    const convertedCar = convertBigIntToNumber(car); // Convert BigInt to Number
-    res.json(convertedCar);
-  } else {
-    res.status(404).json({ message: "Car not found" });
+  try {
+    const car = await carService.getCarById(Number(req.params.id));
+    if (car) {
+      const convertedCar = convertBigIntToNumber(car); // Convert BigInt to Number
+      res.json(convertedCar);
+    } else {
+      res.status(404).json({ message: "Car not found" });
+    }
+  } catch (error) {
+    console.error("Error retrieving car by ID:", error);
+    res.status(500).json({ error: "Failed to retrieve car" });
   }
 };
 

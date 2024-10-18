@@ -11,10 +11,19 @@ const upload = require("../middlewares/upload");
 
 const router = express.Router();
 
-router.post("/", upload.single("image"), createCar); // Use upload middleware for image
+// Route for creating a car (using form-data with image)
+router.post("/", upload.single("image"), createCar);
+
+// Route for getting all cars
 router.get("/", getAllCars);
+
+// Route for getting a specific car by ID
 router.get("/:id", getCarById);
-router.put("/:id", updateCar);
+
+// Route for updating a car (using form-data with image if provided)
+router.put("/:id", upload.single("image"), updateCar);
+
+// Route for deleting a car
 router.delete("/:id", deleteCar);
 
 module.exports = router;

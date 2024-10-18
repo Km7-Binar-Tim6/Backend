@@ -242,14 +242,54 @@ const getCarById = async (req, res) => {
 
 const updateCar = async (req, res) => {
   try {
-    const validatedData = carSchema.parse(req.body);
-    const updatedCar = await carService.updateCar(
-      Number(req.params.id),
-      validatedData
-    );
-    res.json(updatedCar);
+    // Log form-data
+    console.log("Received data from request body:", req.body); // Log the text fields
+    console.log("Received file:", req.file); // Log the uploaded file, if any
+
+    const carId = Number(req.params.id); // Ensure the ID is a number
+
+    const parsedData = req.body; // Get the form-data
+    const updatedCarData = {};
+
+    // Add fields to the update object if they exist in the form-data
+    if (parsedData.plate) updatedCarData.plate = parsedData.plate;
+    if (parsedData.rentperday)
+      updatedCarData.rentperday = parseInt(parsedData.rentperday);
+    if (parsedData.capacity)
+      updatedCarData.capacity = parseInt(parsedData.capacity);
+    if (parsedData.description)
+      updatedCarData.description = parsedData.description;
+    if (parsedData.availableat)
+      updatedCarData.availableat = new Date(parsedData.availableat);
+    if (parsedData.available)
+      updatedCarData.available = parsedData.available === "true";
+    if (parsedData.year) updatedCarData.year = parseInt(parsedData.year);
+
+    // If a new file is uploaded, handle the file upload
+    if (req.file) {
+      const result = await imageKit.upload({
+        file: req.file.buffer, // Buffer from multer
+        fileName: req.file.originalname, // Original file name
+      });
+      updatedCarData.image = result.url; // Set the image URL
+    }
+
+    console.log("Updating car with data:", updatedCarData); // Log the update data
+
+    // Update the car in the database
+    const updatedCar = await prisma.cars.update({
+      where: { id: carId },
+      data: updatedCarData,
+    });
+
+    // Convert any BigInt values in updatedCar to Number
+    const convertedCar = convertBigIntToNumber(updatedCar);
+
+    // Return the converted car data
+    res.json(convertedCar);
   } catch (error) {
-    res.status(400).json({ error: error.errors });
+    console.error("Error updating car:", error);
+    res.status(500).json({ error: "Failed to update car" });
   }
 };
 

@@ -1,4 +1,6 @@
+//src/utils/index.js
 require("dotenv").config();
+
 const express = require("express"); //import express
 require("express-async-errors");
 const router = require("./routes");
@@ -20,6 +22,13 @@ app.use(
 
 //create route for students page
 app.use("/", router);
+
+//create route for ping
+app.get('/', (req, res) => {
+  res.status(200).json({
+      message: "Ping Success!"
+  });
+});
 
 // This function is for 404 handle URL
 app.use("*", notFoundURLHandler);

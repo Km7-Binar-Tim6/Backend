@@ -1,3 +1,5 @@
+//src/middlerwares/errors.js
+
 const { NotFoundError } = require("../utils/request");
 
 // If there are any error when API Hit, this function will be run

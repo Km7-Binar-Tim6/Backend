@@ -1,25 +1,13 @@
-const express = require('express');
-<<<<<<< HEAD
-const transmissionsRouter = require('./routeTransmission');
-const optionsRouter = require('./routeOptions');
-const carOptions = require("./routeCarOptions");
+const express = require("express");
+
+const routesType = require("./routeType");
+const routesManufacture = require("./routeManufacture");
+const routesModel = require("./routeModel");
 
 const router = express.Router();
 
-router.use('/transmission', transmissionsRouter);
-router.use('/options', optionsRouter);
-router.use('/caroptions', carOptions);
+router.use("/type", routesType);
+router.use("/manufacture", routesManufacture);
+router.use("/model", routesModel);
 
 module.exports = router;
-=======
-
-const routesCars = require('./carsRoutes');
-
-const router = express.Router();
-
-router.use('/cars', routesCars);
-
-module.exports = router;
-
-
->>>>>>> 0152746ba3374cd123001d0440452484643f5434

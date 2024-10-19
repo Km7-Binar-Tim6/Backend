@@ -3,7 +3,7 @@
 This is a car listing API developed with Express.js, Prisma ORM, and PostgreSQL.
 
 ## Team Members
-- **Rheno Julius Andreas**: Responsible for cars, specs, and car specs.
+- **Rheno Julius Andreas**: Responsible for cars, specs, car specs and some car option.
 - **David Cristian Putra Sutanto**: Responsible for manufacture, model, and type.
 - **M. Zaky Pria Maulana**: Responsible for car options, options, and transmission.
 

@@ -356,7 +356,21 @@ const updateCar = async (req, res) => {
 const deleteCar = async (req, res) => {
   try {
     const carId = Number(req.params.id);
-    await prisma.cars.delete({ where: { id: carId } });
+
+    // First, delete related records from options and specs tables
+    await prisma.options.deleteMany({
+      where: { car_id: carId },
+    });
+
+    await prisma.specs.deleteMany({
+      where: { car_id: carId },
+    });
+
+    // Now you can safely delete the car
+    await prisma.cars.delete({
+      where: { id: carId },
+    });
+
     res.json({ message: "Car deleted successfully!" });
   } catch (error) {
     console.error("Error deleting car:", error);

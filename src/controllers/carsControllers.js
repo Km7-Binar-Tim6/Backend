@@ -15,3 +15,24 @@ exports.getAllCars = async (req, res, next) => {
     );
     SuccessResponse(res, cars);
 }
+
+exports.getCarById = async (req, res, next) => {
+    const controllerCarId = await serviceCars.getCarById(req.params.id);
+    SuccessResponse(res, controllerCarId);
+}
+
+exports.createCar = async (req, res, next) => {
+    const constollerNewCar = await serviceCars.createCar(req.body, req.files);
+    SuccessResponse(res, constollerNewCar, 201);
+}
+
+exports.updateCar = async (req, res, next) => {
+    const controllerUpdateCar = await serviceCars.updateCar(req.params.id, req.body, req.files);
+    SuccessResponse(res, controllerUpdateCar);
+}
+
+exports.deleteCar = async (req, res, next) => {
+    const controllerDeleteCar = await serviceCars.deleteCar(req.params.id);
+    SuccessResponse(res, controllerDeleteCar);
+}
+
